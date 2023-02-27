@@ -10,6 +10,7 @@ class MyImage:
         self.width = width
         if pixels is None:
             self.pixels = np.zeros((height, width, 3), dtype=np.uint8)
+            self.pixels -= 1
         else:
             self.pixels = np.array(pixels, dtype=np.uint8)
             if len(self.pixels.shape) != 3 or self.pixels.shape[2] != 3:
@@ -36,6 +37,7 @@ class MyImage:
         if 0 <= x < self.width and 0 <= y < self.height:
             return True
         return False
+
     @staticmethod
     def fox_prepare(x, y):
         if isinstance(x, list) and isinstance(y, list):
@@ -93,6 +95,54 @@ class MyImage:
 
 
 
+    def fill_triangle_z(self, triangle: List, color: Tuple[int, int, int] = None):
+        x0, y0, z0,  x1, y1, z1, x2, y2, z2 = triangle
+        h, w = 1000, 1000
+        z_buf = np.zeros((h, w), dtype= np.int8)
+        z_buf += 1000
+        if color is None:
+            color = (255, 255, 255)
+        xmin, ymin, xmax, ymax = self.get_triangle_bounding_box(x0, y0, x1, y1, x2, y2)
+        for x in range(xmin, xmax):
+            for y in range(ymin, ymax):
+                l1, l2, l3 = self.get_bicentric_coordinates(x, y, x0, y0, x1, y1, x2, y2)
+                if l1 > 0 and l2 > 0 and l3 > 0:
+                    z_ = l1*z0+l2*z1+l3*z2
+                    if (z_buf[x,y] < z_):
+                        self.set_pixel(x, y, color)
+                        z_buf[x, y] = z_
+
+
+
+def get_normal_vector(triangle: List):
+    x0, y0, z0, x1, y1, z1, x2, y2, z2 = triangle
+
+    try:
+        v1 = np.array([x1 - x0, y1 - y0, z1 - z0])
+        v2 = np.array([x1 - x2, y1 - y2, z1 - z2])
+        norma = np.cross(v1, v2)
+        #dlina = np.linalg.norm(normal, 2)
+        return (norma)
+    except ZeroDivisionError as zero_error:
+        return 0, 0, 0
+
+def drow_normal_triangle(norma):
+    l = np.array([ 0, 0, 1])
+    cos_like = np.dot(norma, l)
+    #cos_like = np.cross(norma, l)
+    dlina = np.linalg.norm(norma, 2)*np.linalg.norm(l, 2)
+    return ((cos_like/ dlina))
+
+
+
+def test_normal():
+    # img = MyImage(12, 12)
+
+    triangle_1 = [2.5, 1.5, 2.7, 5.7, 10.4, 5.6, 10.3, 5.5, 7.0]
+    # triangle_2 = [0, 0, 11, 0, 13, 13]
+
+    print(get_normal_vector(triangle_1))
+
 
 def line_1(x0: int, y0: int, x1: int, y1: int, img: MyImage, color: Tuple[int, int, int], point_num: int = 100):
     t_arr = np.linspace(0, 1, point_num, endpoint=True)
@@ -101,11 +151,13 @@ def line_1(x0: int, y0: int, x1: int, y1: int, img: MyImage, color: Tuple[int, i
         y = int(y0 * (1.0 - t) + y1 * t)
         img.set_pixel(x, y, color)
 
+
 def line_2(x0: int, y0: int, x1: int, y1: int, img: MyImage, color: Tuple[int, int, int]):
     for x in range(x0, x1 + 1):
         t = (x - x0) / (x1 - x0)
         y = int(y0 * (1.0 - t) + y1 * t)
         img.set_pixel(x, y, color)
+
 
 def line_3(x0: int, y0: int, x1: int, y1: int, img: MyImage, color: Tuple[int, int, int]):
     step = False
@@ -120,6 +172,7 @@ def line_3(x0: int, y0: int, x1: int, y1: int, img: MyImage, color: Tuple[int, i
         t = (x - x0) / (x1 - x0)
         y = int(y0 * (1.0 - t) + y1 * t)
         img.set_pixel(y, x, color) if step else img.set_pixel(x, y, color)
+
 
 def line_4(x0: int, y0: int, x1: int, y1: int, img: MyImage, color: Tuple[int, int, int]):
     step = False
@@ -199,7 +252,7 @@ def read_obj(file_path: str):
         return vertices, faces
 
 
-def test_obj_model(file_path: str, prepare = None, model_name: str = 'Obj model'):
+def test_obj_model(file_path: str, prepare=None, model_name: str = 'Obj model'):
     h, w = 1000, 1000
     image = MyImage(h, w)
     color = (255, 255, 255)
@@ -239,6 +292,7 @@ def test_obj_model(file_path: str, prepare = None, model_name: str = 'Obj model'
 
     image.show(f'{model_name} faces')
 
+
 def test_fill_triangle():
     img = MyImage(12, 12)
 
@@ -253,7 +307,8 @@ def test_fill_triangle():
     img.show('Triangle #2')
     img.clear()
 
-def test_fill_obj_model(file_path: str, prepare = None, model_name: str = 'Obj model'):
+
+def test_fill_obj_model(file_path: str, prepare=None, model_name: str = 'Obj model'):
     h, w = 1000, 1000
     image = MyImage(h, w)
     color = (255, 255, 255)
@@ -281,5 +336,63 @@ def test_fill_obj_model(file_path: str, prepare = None, model_name: str = 'Obj m
         triangle = [x0, y0, x1, y1, x2, y2]
 
         image.fill_triangle(triangle, color)
+    image.show(f'{model_name} faces')
 
+
+def triangle_3d(file_path: str, prepare=None, model_name: str = 'Obj model'):
+    h, w = 1000, 1000
+    image = MyImage(h, w)
+    color = (255, 255, 255)
+
+    points, faces = read_obj(file_path)
+    faces = np.array(faces, dtype=int)
+    faces -= 1
+    triangle = []
+    for face in faces:
+        if len(face) != 3:
+            continue
+        point_0_id, point_1_id, point_2_id = face[0], face[1], face[2]
+
+        x0, y0, z0 = points[point_0_id]
+        x1, y1, z1 = points[point_1_id]
+        x2, y2, z2 = points[point_2_id]
+        triangle_3d = [x0, y0, z0, x1, y1, z1, x2, y2, z2]
+        cos_like = drow_normal_triangle(get_normal_vector(triangle_3d))
+        if (cos_like < 0):
+            x0, y0 = prepare(x0, y0)
+            x1, y1 = prepare(x1, y1)
+            x2, y2 = prepare(x2, y2)
+
+            color = (255* -1 *cos_like, 0, 0)
+            triangle = [x0, y0, x1, y1, x2, y2]
+            image.fill_triangle(triangle, color)
+    image.show(f'{model_name} faces')
+
+def triangle_3d_with_z(file_path: str, prepare=None, model_name: str = 'Obj model'):
+    h, w = 1000, 1000
+    image = MyImage(h, w)
+    color = (255, 255, 255)
+
+    points, faces = read_obj(file_path)
+    faces = np.array(faces, dtype=int)
+    faces -= 1
+    triangle = []
+    for face in faces:
+        if len(face) != 3:
+            continue
+        point_0_id, point_1_id, point_2_id = face[0], face[1], face[2]
+
+        x0, y0, z0 = points[point_0_id]
+        x1, y1, z1 = points[point_1_id]
+        x2, y2, z2 = points[point_2_id]
+        triangle_3d = [x0, y0, z0, x1, y1, z1, x2, y2, z2]
+        cos_like = drow_normal_triangle(get_normal_vector(triangle_3d))
+        if (cos_like < 0):
+            x0, y0 = prepare(x0, y0)
+            x1, y1 = prepare(x1, y1)
+            x2, y2 = prepare(x2, y2)
+
+            color = (255* -1 *cos_like, 0, 0)
+            triangle_3d_corect = [x0, y0, z0, x1, y1, z1, x2, y2,z2]
+            image.fill_triangle_z(triangle_3d_corect, color)
     image.show(f'{model_name} faces')

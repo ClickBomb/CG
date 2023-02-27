@@ -16,5 +16,8 @@ if __name__ == "__main__":
 
     # lab №2
     # MyImage.test_fill_triangle()
-    file_path = './obj_files/deer.obj'
-    test_fill_obj_model(file_path, prepare=MyImage.deer_prepare, model_name='deer')
+    file_path = './obj_files/rabbit.obj'
+    test_fill_obj_model(file_path, prepare=MyImage.rabbit_prepare, model_name='deer')
+    triangle_3d(file_path, prepare=MyImage.rabbit_prepare, model_name='deer')
+    triangle_3d_with_z(file_path, prepare=MyImage.rabbit_prepare, model_name='deer')
+    test_normal()
